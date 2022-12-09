@@ -5,7 +5,5 @@ import org.springframework.data.mongodb.repository.MongoRepository
 
 
 interface MarketDataRepository: MongoRepository<MarketData, String>{
-
     fun findByName(name: String): MarketData
-
 }

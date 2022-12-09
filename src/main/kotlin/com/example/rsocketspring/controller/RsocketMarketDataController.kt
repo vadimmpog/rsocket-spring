@@ -2,15 +2,21 @@ package com.example.rsocketspring.controller
 
 import com.example.rsocketspring.controller.client.MarketDataRequest
 import com.example.rsocketspring.model.entity.MarketData
+import com.example.rsocketspring.repository.CustomMarketDataRepository
 import com.example.rsocketspring.repository.MarketDataRepository
+import org.springframework.messaging.handler.annotation.MessageExceptionHandler
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.messaging.handler.annotation.Payload
 import org.springframework.stereotype.Controller
+import reactor.core.publisher.Flux
+import reactor.core.publisher.Mono
+import java.time.Duration.ofMillis
 
 
 @Controller
 class RsocketMarketDataController(
-    private val marketDataRepository: MarketDataRepository
+    private val marketDataRepository: MarketDataRepository,
+    private val customMarketDataRepository: CustomMarketDataRepository
 ) {
 
 //    Request-Response
@@ -25,7 +31,7 @@ class RsocketMarketDataController(
     }
 
     @MessageMapping("all")
-    fun all(): List<MarketData> {
+    fun allMarketData(): List<MarketData> {
         return marketDataRepository.findAll()
     }
 
@@ -36,28 +42,19 @@ class RsocketMarketDataController(
         marketDataRepository.delete(marketData)
     }
 
-////    Request-Stream
-//    @MessageMapping("feedMarketData")
-//    fun feedMarketData(marketDataRequest: MarketDataRequest): Flux<MarketData?>? {
-//        return marketDataRepository.getAll(marketDataRequest.getStock())
-//    }
+//    Request-Stream
+    @MessageMapping("feed")
+    fun feedMarketData(@Payload name: String): Flux<MarketData> {
+        return Flux.fromStream(customMarketDataRepository.findMarketPrice(name))
+    }
 
 //    Channel
-//    @MessageMapping("channel")
-//    fun channel(settings: Flux<Duration?>): Flux<Message?>? {
-//        return settings
-//            .doOnNext(Consumer<Duration> { setting: Duration -> log.info("\nFrequency setting is {} second(s).\n", setting.getSeconds()) })
-//            .switchMap(Function<Duration, Publisher<*>> { setting: Duration? ->
-//                Flux.interval(setting)
-//                    .map<Any> { index: Long? ->
-//                        Message(
-//                            SERVER,
-//                            CHANNEL,
-//                            index
-//                        )
-//                    }
-//            })
-//            .log()
-//    }
+    @MessageMapping("channel")
+    fun echoChannel(payloads: Flux<String>): Flux<MarketData> {
+        return payloads.delayElements(ofMillis(10)).map { payload: String -> marketDataRepository.findByName(payload) }}
 
+    @MessageExceptionHandler
+    fun handleException(e: Exception): Mono<String> {
+        return Mono.just("Error occurred: ${e.message.toString()}")
+    }
 }
