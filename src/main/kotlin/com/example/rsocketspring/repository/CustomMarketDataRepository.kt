@@ -9,7 +9,7 @@ class CustomMarketDataRepository(
     private val repository: MarketDataRepository
 ) {
 
-    fun findMarketPrice(name: String): Stream<MarketData> {
+    fun findMarketData(): Stream<MarketData> {
         return repository.findAll().stream()
     }
 

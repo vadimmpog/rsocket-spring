@@ -50,20 +50,20 @@ class ClientController(
 
 //    Request-Stream
     @GetMapping("/feed/{name}", produces = [MediaType.TEXT_EVENT_STREAM_VALUE])
-    fun feed(@PathVariable name: String): Publisher<MarketData> {
+    fun feed(): Publisher<MarketData> {
         return rSocketRequester
             .route("feed")
-            .data(name)
             .retrieveFlux(MarketData::class.java)
     }
 
-//     channel
+//    Channel | with backpressure (limit rate)
     @GetMapping("/channel")
     fun findUsersByIds(): Flux<MarketData> {
         return rSocketRequester
             .route("channel")
             .data(Flux.range(0, 2), MarketData::class.java)
             .retrieveFlux(MarketData::class.java)
+            .limitRate(3)
     }
 
     @GetMapping("/close")

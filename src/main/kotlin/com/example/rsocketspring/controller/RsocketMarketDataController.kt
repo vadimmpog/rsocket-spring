@@ -2,59 +2,58 @@ package com.example.rsocketspring.controller
 
 import com.example.rsocketspring.controller.client.MarketDataRequest
 import com.example.rsocketspring.model.entity.MarketData
-import com.example.rsocketspring.repository.CustomMarketDataRepository
-import com.example.rsocketspring.repository.MarketDataRepository
+import com.example.rsocketspring.service.RsocketService
+import com.example.rsocketspring.utils.logger
+import org.springframework.dao.EmptyResultDataAccessException
 import org.springframework.messaging.handler.annotation.MessageExceptionHandler
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.messaging.handler.annotation.Payload
 import org.springframework.stereotype.Controller
 import reactor.core.publisher.Flux
-import reactor.core.publisher.Mono
-import java.time.Duration.ofMillis
 
 
 @Controller
 class RsocketMarketDataController(
-    private val marketDataRepository: MarketDataRepository,
-    private val customMarketDataRepository: CustomMarketDataRepository
+    private val rsocketService: RsocketService
 ) {
 
 //    Request-Response
+    @Throws(EmptyResultDataAccessException::class)
     @MessageMapping("current")
     fun currentMarketData(@Payload name: String): MarketData? {
-        return marketDataRepository.findByName(name)
+        return rsocketService.currentMarketData(name)
     }
 
     @MessageMapping("create")
     fun createMarketData(@Payload marketDataRequest: MarketDataRequest): MarketData {
-        return marketDataRepository.save(MarketData(marketDataRequest.name, marketDataRequest.description, marketDataRequest.quantity, marketDataRequest.price))
+        return rsocketService.createMarketData(marketDataRequest)
     }
 
     @MessageMapping("all")
     fun allMarketData(): List<MarketData> {
-        return marketDataRepository.findAll()
+        return rsocketService.allMarketData()
     }
 
 //    Fire-and-Forget
     @MessageMapping("delete")
     fun collectMarketData(@Payload name: String) {
-        val marketData = marketDataRepository.findByName(name)
-        marketDataRepository.delete(marketData)
+        rsocketService.collectMarketData(name)
     }
 
 //    Request-Stream
     @MessageMapping("feed")
-    fun feedMarketData(@Payload name: String): Flux<MarketData> {
-        return Flux.fromStream(customMarketDataRepository.findMarketPrice(name))
+    fun feedMarketData(): Flux<MarketData> {
+        return rsocketService.feedMarketData()
     }
 
 //    Channel
     @MessageMapping("channel")
     fun echoChannel(payloads: Flux<String>): Flux<MarketData> {
-        return payloads.delayElements(ofMillis(10)).map { payload: String -> marketDataRepository.findByName(payload) }}
+        return rsocketService.echoChannel(payloads)
+    }
 
-    @MessageExceptionHandler
-    fun handleException(e: Exception): Mono<String> {
-        return Mono.just("Error occurred: ${e.message.toString()}")
+    @MessageExceptionHandler(EmptyResultDataAccessException::class)
+    fun handleException(e: EmptyResultDataAccessException) {
+        logger().info("Error occurred!", e)
     }
 }
