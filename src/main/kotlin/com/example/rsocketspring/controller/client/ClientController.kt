@@ -49,7 +49,7 @@ class ClientController(
     }
 
 //    Request-Stream
-    @GetMapping("/feed/{name}", produces = [MediaType.TEXT_EVENT_STREAM_VALUE])
+    @GetMapping("/feed", produces = [MediaType.TEXT_EVENT_STREAM_VALUE])
     fun feed(): Publisher<MarketData> {
         return rSocketRequester
             .route("feed")

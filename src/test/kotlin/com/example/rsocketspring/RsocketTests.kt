@@ -6,10 +6,11 @@ import com.example.rsocketspring.repository.CustomMarketDataRepository
 import com.example.rsocketspring.repository.MarketDataRepository
 import com.example.rsocketspring.service.RsocketService
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
+import io.mockk.runs
 import org.junit.jupiter.api.Test
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.dao.EmptyResultDataAccessException
 import reactor.core.publisher.Flux
 import java.util.stream.Stream
 
@@ -71,11 +72,21 @@ class RsocketTests {
     }
 
     @Test
-    fun feedMarketDataTest() {
-        every { customMarketDataRepository.findMarketData() } returns Stream.of(testMarketItem, newTestMarketItem)
+    fun fireAndForget() {
+        val name = "wood"
+        every { marketDataRepository.findByName(name) } returns testMarketItem
+        every { marketDataRepository.delete(testMarketItem) } just runs
+        rsocketService.collectMarketData(name)
+    }
 
+    @Test
+    fun feedMarketDataTest() {
+        val stMarketData =Stream.of(testMarketItem, newTestMarketItem)
+        every { customMarketDataRepository.findMarketData() } returns stMarketData
         val fMarketData = rsocketService.feedMarketData()
-        println(fMarketData)
+
+        val twoMD = fMarketData.take(2)
+        assert(2L == twoMD.count().block())
     }
 
     @Test
@@ -83,9 +94,10 @@ class RsocketTests {
         val payloads: Flux<String> = Flux.just("Chipboard", "Metal scrap")
         every { marketDataRepository.findByName("Chipboard") } returns testMarketItem
         every { marketDataRepository.findByName("Metal scrap") } returns newTestMarketItem
-
         val fMarketData = rsocketService.echoChannel(payloads)
-        println(fMarketData)
+        val twoMD = fMarketData.take(2)
+        assert(2L == twoMD.count().block())
+        assert("Chipboard" == twoMD.blockFirst()!!.name)
     }
 
 }

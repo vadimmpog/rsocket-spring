@@ -2,7 +2,7 @@ spring:
   application:
     name: rsocket-spring
   datasource:
-    url: ${DATA_SOURCE_URL:mongodb://localhost:27017/market}
+    url: ${DATA_SOURCE_URL:mongodb://host.docker.internal:27017/market}
 
   rsocket:
     server:
